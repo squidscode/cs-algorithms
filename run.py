@@ -1,11 +1,15 @@
 #! /usr/bin/env python3
 
 import argparse
+import ctypes
+import re
 import subprocess
 from ctypes import cdll
 import sys
+from typing import Any
 
 NM_COMMAND = '%s -D %s'
+RE_FUNCTION_CALL = r'(\w+)\((.*)\)'
 
 def main():
     parser = argparse.ArgumentParser()
@@ -15,14 +19,34 @@ def main():
     args = parser.parse_args()
     nm_output = nm(args.nm_fp, args.shared_library)
     c_functions = filter_c_functions(nm_output)
-    if args.function_call is None:
-        print_shared_functions(c_functions)
-        return
     sl = load_shared_library(args.shared_library)
-    function_name, function_args = parse_function_call(args.function_call)
-    check_function_name(c_functions, function_name)
-    print(f"> {args.function_call}")
-    print(sl.__getattr__(function_name)(*function_args))
+    if args.function_call:
+        function_name, function_args = parse_function_call(args.function_call)
+        check_function_name(c_functions, function_name)
+        print(sl.__getattr__(function_name)(*function_args))
+    else:
+        print_shared_functions(c_functions)
+        interactive_loop(sl, c_functions)
+            
+def interactive_loop(sl, c_functions):
+    global print_shared_functions
+    print_shared_functions = lambda *args, **kwargs: None
+    try:
+        while (print("> ", end=""), fc := input()):
+            if 0 == len(fc):
+                return
+            valid = True
+            def invalidate(_):
+                nonlocal valid
+                valid = False
+            function_name, function_args = parse_function_call(fc, exit_fn=invalidate)
+            check_function_name(c_functions, function_name, exit_fn=invalidate)
+            if valid:
+                print(sl.__getattr__(function_name)(*function_args))
+    except EOFError:
+        pass
+    except:
+        raise
 
 def load_shared_library(file_name: str):
     return cdll.LoadLibrary(file_name)
@@ -66,17 +90,33 @@ def print_shared_functions(c_functions: list[str], print=print):
 # TODO: Better error handling!
 # TODO: Use regex to check the validity of the function call, add hooks for different
 #       ctypes....
-def parse_function_call(function_call: str) -> tuple[str, list['ctype']]:
-    func_name = function_call.split("(")[0]
-    func_arguments = [int(i) for i in function_call.split("(")[1].split(")")[0].split(",")]
-    return func_name, func_arguments
+def parse_function_call(function_call: str, exit_fn=exit) -> tuple[str, list[Any]]:
+    rfunc_call = re.compile(RE_FUNCTION_CALL)
+    matches = rfunc_call.match(function_call)
+    if not matches:
+        print_function_call_error(exit_fn)
+        return function_call, []
+    assert(matches != None)
+    groups = matches.groups()
+    fname = groups[0]
+    arg_array = [s.strip() for s in groups[1].split(",") if len(s.strip())]
+    fargs = parse_function_arguments(arg_array)
+    return fname, fargs
 
-def check_function_name(allowed_funcs: list[str], func: str) -> None:
+def parse_function_arguments(function_args: list[str]) -> list[Any]:
+    return [int(i) for i in function_args]
+
+def check_function_name(allowed_funcs: list[str], func: str, exit_fn=exit) -> None:
     perror = lambda *args, **kwargs: print(*args, file=sys.stderr, **kwargs)
     if func not in allowed_funcs:
         perror(f"Function `{func}` is not a callable c function!")
         print_shared_functions(allowed_funcs, print=perror)
-        exit(1)
+        exit_fn(1)
+
+def print_function_call_error(exit_fn):
+    perror = lambda *args, **kwargs: print(*args, file=sys.stderr, **kwargs)
+    perror("The function call is improperly formatted, the parsing step failed")
+    exit_fn(1)
 
 if __name__ == '__main__':
     main()
