@@ -1,16 +1,13 @@
-extern "C" {
-    int fib_recursive(int);
-    int fib_linear(int);
-}
+#include "../util.hpp"
 
-int fib_recursive(int n) {
+C_FUNCTION(int, fib_recursive, int n) {
     if (n < 2) {
         return n;
     }
     return fib_recursive(n-1) + fib_recursive(n-2);
 }
 
-int fib_linear(int n) {
+C_FUNCTION(int, fib_linear, int n) {
     if(n < 2) {
          return n;
     }
