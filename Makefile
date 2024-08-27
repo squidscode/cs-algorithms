@@ -3,21 +3,20 @@ CXXFLAGS := --std=c++11
 SRC_DIR := src
 EXE_DIR := build
 OBJ_DIR := obj
-MAIN_CPP := main.cpp
-EXE := $(shell find src | grep '.cpp' | xargs -I {} bash -c "echo {} | gsed 's/.cpp/.exe/' | gsed "s%${SRC_DIR}/%${EXE_DIR}/%"")
+EXE := $(shell find src | grep '.cpp' | xargs -I {} bash -c "echo {} | gsed 's/.cpp/.so/' | gsed "s%${SRC_DIR}/%${EXE_DIR}/%"")
 INCLUDES := src/util.hpp
 
 all: ${EXE}
 
 .PHONY: clean all
 
-${OBJ_DIR}/%.o: ${SRC_DIR}/%.cpp ${INCLUDES}
+${OBJ_DIR}/%.o: ${SRC_DIR}/%.cpp
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) -c $^ -o $@
+	$(CXX) $(CXXFLAGS) -c -fPIC $< -o $@
 
-${EXE}: ${EXE_DIR}/%.exe: ${OBJ_DIR}/%.o ${MAIN_CPP}
+${EXE}: ${EXE_DIR}/%.so: ${OBJ_DIR}/%.o
 	@mkdir -p $(dir $@)
-	$(CXX) $(CXXFLAGS) $^ -o $@
+	$(CXX) $(CXXFLAGS) $^ -shared -o $@
 
 clean:
 	rm -r ${OBJ_DIR} ${EXE_DIR}
