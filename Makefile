@@ -1,5 +1,5 @@
 CXX := g++
-CXXFLAGS := --std=c++11
+CXXFLAGS := --std=c++11 -Isrc/
 SRC_DIR := src
 EXE_DIR := build
 OBJ_DIR := obj

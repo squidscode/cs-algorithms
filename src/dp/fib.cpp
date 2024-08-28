@@ -1,4 +1,4 @@
-#include "../util.hpp"
+#include <util.hpp>
 
 C_FUNCTION(int, fib_recursive, int n) {
     if (n < 2) {
