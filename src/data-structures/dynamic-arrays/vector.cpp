@@ -1,4 +1,4 @@
-#include <util.h>
+#include <util.hpp>
 #include <cstddef>
 
 #define tt template<class T>
@@ -20,6 +20,9 @@ private:
     T* buffer;
     void resize();
 };
+
+C_CONSTRUCTOR(new Vector<int>, Vector_int, default);
+C_DESTRUCTOR(Vector<int>::~Vector, Vector_int, default);
 
 tt Vector<T>::Vector() {
     this->capacity = 1;
