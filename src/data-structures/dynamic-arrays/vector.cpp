@@ -21,8 +21,8 @@ private:
     void resize();
 };
 
-C_CONSTRUCTOR(new Vector<int>, Vector_int, default);
-C_DESTRUCTOR(Vector<int>::~Vector, Vector_int, default);
+C_CONSTRUCTOR(new Vector<int>, Vector, default);
+C_DESTRUCTOR(Vector<int>*, Vector, default);
 
 tt Vector<T>::Vector() {
     this->capacity = 1;

@@ -1,3 +1,5 @@
+#include <magic.hpp>
+
 #ifndef UTIL_HPP
 #define UTIL_HPP
 
@@ -16,9 +18,14 @@
     _C_METHOD((void*) constructor_binding, void*, C_CONSTRUCTOR_NAME(class_name, constructor_version), __VA_ARGS__)
 
 #define C_DESTRUCTOR(class_cast, class_name, destructor_version, ...) \
+    IF_ELSE(HAS_ARGS(__VA_ARGS__))( \
+    __C_DESTRUCTOR(class_cast, class_name, destructor_version, void *this_object, __VA_ARGS__), \
+    __C_DESTRUCTOR(class_cast, class_name, destructor_version, void *this_object) \
+    )
+#define __C_DESTRUCTOR(class_cast, class_name, destructor_version, ...) \
     extern "C" { \
-        void (C_DESTRUCTOR_NAME(class_name, destructor_version))(void *this_object, __VA_ARGS__){ \
-            ((class_cast) this_object)->~class_name(__VA_ARGS__); \
+        void (C_DESTRUCTOR_NAME(class_name, destructor_version))(__VA_ARGS__){ \
+            delete (class_cast) this_object; \
         }; \
     }
 
