@@ -15,7 +15,10 @@
     class_name ## __method__ ## fname
 
 #define C_CONSTRUCTOR(constructor_binding, class_name, constructor_version, ...) \
-    _C_METHOD((void*) constructor_binding, void*, C_CONSTRUCTOR_NAME(class_name, constructor_version), __VA_ARGS__)
+    IF_ELSE(HAS_ARGS(__VA_ARGS__))( \
+    _C_METHOD((void*) constructor_binding, void*, C_CONSTRUCTOR_NAME(class_name, constructor_version), __VA_ARGS__), \
+    _C_METHOD((void*) constructor_binding, void*, C_CONSTRUCTOR_NAME(class_name, constructor_version)) \
+    )
 
 #define C_DESTRUCTOR(class_cast, class_name, destructor_version, ...) \
     IF_ELSE(HAS_ARGS(__VA_ARGS__))( \
@@ -33,6 +36,8 @@
     _C_METHOD(method_binding, ret_type, C_METHOD_NAME(class_name, fname), __VA_ARGS__)
 
 #define _C_METHOD(method_binding, ret_type, method_name, ...) \
-    extern "C" {ret_type (method_name)(__VA_ARGS__) {return method_binding(__VA_ARGS__);}}
+    extern "C" {ret_type (method_name)(MAP(FIRST, COMMA, __VA_ARGS__)) { \
+        return method_binding(MAP(SECOND, COMMA, __VA_ARGS__)); \
+    }}
 
 #endif

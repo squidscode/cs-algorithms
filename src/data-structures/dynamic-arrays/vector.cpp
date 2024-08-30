@@ -23,6 +23,7 @@ private:
 
 C_CONSTRUCTOR(new Vector<int>, Vector, default);
 C_DESTRUCTOR(Vector<int>*, Vector, default);
+C_METHOD(Vector<int>::push_back, void, Vector, push_back, (int, val));
 
 tt Vector<T>::Vector() {
     this->capacity = 1;
