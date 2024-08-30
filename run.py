@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 import argparse
-import ctypes
+import os
 import re
 import subprocess
 from ctypes import cdll
@@ -20,33 +20,48 @@ def main():
     nm_output = nm(args.nm_fp, args.shared_library)
     c_functions = filter_c_functions(nm_output)
     sl = load_shared_library(args.shared_library)
+    local_env = construct_local_dict(sl, c_functions)
     if args.function_call:
         function_name, function_args = parse_function_call(args.function_call)
         check_function_name(c_functions, function_name)
         print(sl.__getattr__(function_name)(*function_args))
     else:
         print_shared_functions(c_functions)
-        interactive_loop(sl, c_functions)
+        interactive_loop(sl, local_env)
             
-def interactive_loop(sl, c_functions):
+def interactive_loop(sl, local_env):
     global print_shared_functions
-    print_shared_functions = lambda *args, **kwargs: None
+    global_dict = {}
+    print_shared_functions = lambda *_, **__: None
     try:
         while (print("> ", end=""), fc := input()):
             if 0 == len(fc):
-                return
-            valid = True
-            def invalidate(_):
-                nonlocal valid
-                valid = False
-            function_name, function_args = parse_function_call(fc, exit_fn=invalidate)
-            check_function_name(c_functions, function_name, exit_fn=invalidate)
-            if valid:
-                print(sl.__getattr__(function_name)(*function_args))
+                continue
+            try:
+                result = eval_or_exec(fc, global_dict, local_env)
+                if result != None:
+                    print(result)
+            except Exception as e:
+                print(e)
     except EOFError:
+        pass
+    except KeyboardInterrupt:
         pass
     except:
         raise
+
+def eval_or_exec(*args):
+    try:
+        return eval(*args)
+    except:
+        pass
+    exec(*args)
+
+def construct_local_dict(sl, c_functions):
+    return {
+        str(fname): (lambda *args: sl.__getattr__(fname)(*args))
+        for fname in c_functions
+    }
 
 def load_shared_library(file_name: str):
     return cdll.LoadLibrary(file_name)

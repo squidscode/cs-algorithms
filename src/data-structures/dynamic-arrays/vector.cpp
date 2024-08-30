@@ -1,4 +1,5 @@
 #include <util.hpp>
+#include <stdio.h>
 #include <cstddef>
 
 #define tt template<class T>
@@ -21,11 +22,14 @@ private:
     void resize();
 };
 
-C_CONSTRUCTOR(new Vector<int>, Vector, default);
+C_CONSTRUCTOR(Vector<int>, Vector, default);
 C_DESTRUCTOR(Vector<int>*, Vector, default);
-C_METHOD(Vector<int>::push_back, void, Vector, push_back, (int, val));
+
+C_METHOD(Vector<int>*, int, Vector, pop_back);
+C_VOID_METHOD(Vector<int>*, Vector, push_back, int);
 
 tt Vector<T>::Vector() {
+    printf("WHAT\n");
     this->capacity = 1;
     this->sz = 0;
     this->buffer = new T[1];
@@ -74,6 +78,10 @@ tt T& Vector<T>::operator[](size_t idx) {
 
 tt const T& Vector<T>::operator[](size_t idx) const {
     return this->buffer[idx];
+}
+
+void func() {
+    Vector<int> uh = Vector<int>();
 }
 
 #undef tt

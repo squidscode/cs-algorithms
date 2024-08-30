@@ -156,6 +156,11 @@
 #define SECOND(a, b, ...) b
 
 /**
+ * Get the rest of the arguments.
+ */
+#define REST(a, ...) __VA_ARGS__
+
+/**
  * Expects a single input (not containing commas). Returns 1 if the input is
  * PROBE() and otherwise returns 0.
  *
