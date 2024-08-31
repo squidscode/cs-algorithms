@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 import argparse
-import os
+import ctypes
 import re
 import subprocess
 from ctypes import cdll
@@ -10,6 +10,29 @@ from typing import Any
 
 NM_COMMAND = '%s -D %s'
 RE_FUNCTION_CALL = r'(\w+)\((.*)\)'
+CPP_CLASS_CHILD = '''
+class %s(CppClass):
+    def __init__(self, *args):
+        super().__init__(\"%s\", *args)
+'''
+CPP_CLASS = '''
+class CppClass():
+    def __init__(self, cpp_class_name, *args):
+        self.cpp_class = cpp_class_name
+        self.instance = globals()[f"{self.cpp_class}__constructor__default"](*args)
+
+    def __del__(self):
+        globals()[f"{self.cpp_class}__destructor__default"](self.instance)
+
+    def __getattr__(self, method_name):
+        try:
+            method_f = globals()[f"{self.cpp_class}__method__{method_name}"]
+            return lambda *args: method_f(self.instance, *args)
+        except NameError:
+            print(f"[ERROR] {self.cpp_class}__method__{method_name} does not exist!")
+        except:
+            raise AttributeError("no attribute found?")
+'''
 
 def main():
     parser = argparse.ArgumentParser()
@@ -20,25 +43,28 @@ def main():
     nm_output = nm(args.nm_fp, args.shared_library)
     c_functions = filter_c_functions(nm_output)
     sl = load_shared_library(args.shared_library)
-    local_env = construct_local_dict(sl, c_functions)
+    global_env = construct_local_dict(sl, c_functions)
+    classes = [s.split("__constructor__")[0] for s in c_functions if "__constructor__" in s]
+    exec(CPP_CLASS, global_env)
+    for class_name in classes:
+        exec(CPP_CLASS_CHILD%(class_name, class_name), global_env)
     if args.function_call:
         function_name, function_args = parse_function_call(args.function_call)
         check_function_name(c_functions, function_name)
         print(sl.__getattr__(function_name)(*function_args))
     else:
         print_shared_functions(c_functions)
-        interactive_loop(sl, local_env)
+        interactive_loop(global_env)
             
-def interactive_loop(sl, local_env):
+def interactive_loop(global_env):
     global print_shared_functions
-    global_dict = {}
     print_shared_functions = lambda *_, **__: None
     try:
-        while (print("> ", end=""), fc := input()):
+        while fc := input(">>> "):
             if 0 == len(fc):
                 continue
             try:
-                result = eval_or_exec(fc, global_dict, local_env)
+                result = eval_or_exec(fc, global_env)
                 if result != None:
                     print(result)
             except Exception as e:
@@ -58,10 +84,30 @@ def eval_or_exec(*args):
     exec(*args)
 
 def construct_local_dict(sl, c_functions):
-    return {
-        str(fname): (lambda *args: sl.__getattr__(fname)(*args))
+    func_pointer_cache = {
+        str(fname): sl.__getattr__(fname)
         for fname in c_functions
     }
+    r = {
+        str(fname): c_call(fname, func_pointer_cache)
+        for fname in c_functions
+    }
+    return r
+
+def c_call(fname, func_pointer_cache):
+    def f(*args):
+        # print(f"Calling: {fname}")
+        if "__constructor__" in fname:
+            # print(f"CHANGING RESTYPE OF {fname}")
+            func_pointer_cache[fname].restype = ctypes.c_void_p
+            return ctypes.c_void_p(func_pointer_cache[fname](*args))
+        if "__method__" in fname or "__destructor__" in fname:
+            # Asserting __method__ and __destructor__ are correctly called
+            assert(0 < len(args))
+            assert(type(args[0]) is ctypes.c_void_p)
+            return func_pointer_cache[fname](*args)
+        return func_pointer_cache[fname](*args)
+    return f
 
 def load_shared_library(file_name: str):
     return cdll.LoadLibrary(file_name)
