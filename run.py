@@ -60,21 +60,25 @@ def interactive_loop(global_env):
     global print_shared_functions
     print_shared_functions = lambda *_, **__: None
     try:
-        while fc := input(">>> "):
-            if 0 == len(fc):
-                continue
-            try:
-                result = eval_or_exec(fc, global_env)
-                if result != None:
-                    print(result)
-            except Exception as e:
-                print(e)
+        inner_loop(global_env)
     except EOFError:
         pass
     except KeyboardInterrupt:
         pass
     except:
         raise
+
+def inner_loop(global_env):
+    while fc := input(">>> "):
+        if 0 == len(fc):
+            continue
+        try:
+            result = eval_or_exec(fc, global_env)
+            if result != None:
+                print(result)
+        except Exception as e:
+            print(e)
+
 
 def eval_or_exec(*args):
     try:
