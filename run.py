@@ -77,7 +77,7 @@ def inner_loop(global_env):
             if result != None:
                 print(result)
         except Exception as e:
-            print(e)
+            print(e, end="")
 
 
 def eval_or_exec(*args):
